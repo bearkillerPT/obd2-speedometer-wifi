@@ -1,20 +1,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Text } from 'react-native';
-import { Data, useAppContext } from '../context/AppContext';
+import { View, Text } from 'react-native';
+import {  useAppContext } from '../context/AppContext';
+import { connectionStyles } from './ConnectionSetup';
 
 const App = () => {
   const { ws, data, setWs, setData } = useAppContext();
-  const [viewableData, setViewableData] = useState<Data>({
-    speed: 0,
-    rpm: 0,
-  });
   useEffect(() => {
-    const interval = setInterval(() => {
-      setViewableData(data);
-    }, 200);
-
     if(ws) {
+      setTimeout(() => { ws.send('01 0D') }, 200); // Send command to request vehicle speed
+      setTimeout(() => { ws.send('01 0C') }, 400); // Send command to request vehicle rpm
+
       ws.onmessage = (e) => {
         // A message was received
         console.log(e.data);
@@ -49,12 +45,27 @@ const App = () => {
         setWs(null);
       }
     }
-
-    return () => clearInterval(interval);
   }, []);
 
   return (
-    <Text>OB2 Reader</Text>
+    <>
+    { ws && ws.readyState === 1 ? (
+      <View style={connectionStyles.topContainer}>
+       <View style={connectionStyles.entryContainer}>
+         <Text style={connectionStyles.title}>Speed</Text>
+         <Text style={connectionStyles.data}>{data.speed}</Text>
+        </View>
+        <View style={connectionStyles.entryContainer}>
+          <Text style={connectionStyles.title}>RPM</Text>
+          <Text style={connectionStyles.data}>{data.rpm}</Text>
+        </View>
+      </View>
+    ) : (
+      <View style={connectionStyles.topContainer}>
+        <Text style={connectionStyles.title}>Not connected</Text>
+      </View>
+    )}
+    </>
   );
 };
 
