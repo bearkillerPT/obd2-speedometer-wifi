@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import { Alert, ImageBackground, TouchableOpacity, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAppContext } from '../context/AppContext';
+import TcpSocket from 'react-native-tcp-socket';
 
 const ConnectionSetup = () => {
   const [ip, setIp] = useState('192.168.1.120');
   const [port, setPort] = useState('35000');
-  const { ws, data, setWs } = useAppContext();
+  const { tcpSocket, data, setTcpSocket } = useAppContext();
 
   const [connectionStatus, setConnectionStatus] = useState<
   "disconnected" |
@@ -15,9 +16,9 @@ const ConnectionSetup = () => {
   "connected">('disconnected');
 
   const disconnect = () => {
-    if (ws) {
-      ws.close();
-      setWs(null);
+    if (tcpSocket?.readyState === 'open')  {
+      tcpSocket?.end()
+      setTcpSocket(null);
       setConnectionStatus('disconnected');
     }
   };
@@ -25,30 +26,36 @@ const ConnectionSetup = () => {
   const connect = () => {
     if(connectionStatus === 'disconnected') {
       setConnectionStatus('connecting');
-      const newWs = new WebSocket(`ws://${ip}:${port}`);
-      const currentTime = new Date().getTime();
-      newWs.onopen = () => {
-        console.log("ws opened");
-        Alert.alert("Connection established in " + (new Date().getTime() - currentTime) + "ms");
-        setWs(newWs); // Update the value of ws using setWs
-        setConnectionStatus('connected');
+      const options = {
+        port: Number(port),
+        host: ip,
+        localAddress: '127.0.0.1',
+        reuseAddress: true,
+        // localPort: 20000,
+        // interface: "wifi",
       };
-      newWs.onmessage = (e) => {
-        // A message was received
-        console.log(e.data);
-        Alert.alert("Message received: " + e.data);
-      };
-      newWs.onerror = (e) => {
-        // An error occurred
-        console.log(e);
-        setConnectionStatus('disconnected');
-        Alert.alert("Connection failed with error " + e.message);
-      };
-      newWs.onclose = () => {
-        console.log("ws closed");
-        setConnectionStatus('disconnected');
-        Alert.alert("Connection closed");
-      };
+      
+      // Create socket
+      const client = TcpSocket.createConnection(options, () => {
+        // Write on the socket
+        client.write('ATZ\r\n');
+      
+        // Close socket
+        client.destroy();
+      });
+      
+      client.on('data', function(data) {
+        setTcpSocket(client);
+        console.log('message was received', data);
+      });
+      
+      client.on('error', function(error) {
+        console.log(error);
+      });
+      
+      client.on('close', function(){
+        console.log('Connection closed!');
+      });
     }
     else {
       Alert.alert("Connection is already being established");
@@ -82,7 +89,7 @@ const ConnectionSetup = () => {
           />
         </View>
         <View style={connectionStyles.entryContainer}>
-          {ws === null || connectionStatus === "disconnected" ? (
+          {tcpSocket === null || connectionStatus === "disconnected" ? (
             <TouchableOpacity onPress={connect} style={[connectionStyles.connectButton, {
               backgroundColor: ip === '' || port === '' ? 'gray' : connectionStyles.connectButton.backgroundColor,
             }]}>
