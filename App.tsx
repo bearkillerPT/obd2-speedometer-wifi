@@ -1,42 +1,38 @@
-import React, { useEffect, useRef } from 'react';
-import { Text } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import ConnectionSetup from './src/screens/ConnectionSetup';
+import Dashboard from './src/screens/Dashboard';
+import AppProvider from './src/context/AppContext';
+import { NavigationContainer } from '@react-navigation/native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+const Tab = createBottomTabNavigator();
 
-const App = () => {
-  const ws = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    ws.current = new WebSocket('ws://192.168.0.10:35000');
-
-    ws.current.onopen = () => {
-      console.log("ws opened");
-      if (ws.current)
-      ws.current.send('01 0D'); // Send command to request vehicle speed
-    };
-
-    ws.current.onmessage = (e) => {
-      // A message was received
-      console.log(e.data);
-    };
-
-    ws.current.onerror = (e) => {
-      // An error occurred
-      console.log(e.currentTarget);
-    };
-
-    ws.current.onclose = () => {
-      console.log("ws closed");
-    };
-
-    return () => {
-      // Cleanup function
-      if (ws.current)
-      ws.current.close();
-    };
-  }, []);
-
+export default () => {
   return (
-    <Text>OB2 Reader</Text>
+    <NavigationContainer theme={{
+      dark: true,
+      colors: {
+        primary: 'white',
+        background: 'black',
+        card: 'black',
+        text: 'white',
+        border: 'black',
+        notification: 'white',
+      },
+    }}>
+      <AppProvider>
+        <Tab.Navigator >
+          <Tab.Screen name="OBD2 Wifi Setup" component={ConnectionSetup} options={{
+            tabBarIcon: ({ color, size }) => (
+              <FontAwesome name="wifi" color={color} size={size} />
+            )
+          }} />
+          <Tab.Screen name="Dashboard" component={Dashboard} options={{
+            tabBarIcon: ({ color, size }) => (
+              <FontAwesome name="dashboard" color={color} size={size} />
+            )
+          }} />
+        </Tab.Navigator>
+      </AppProvider>
+    </NavigationContainer>
   );
-};
-
-export default App;
+}
